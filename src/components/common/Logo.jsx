@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, SteeringWheel } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 const Logo = ({ className = "", iconSize = 32, textSize = "text-2xl" }) => {
     return (

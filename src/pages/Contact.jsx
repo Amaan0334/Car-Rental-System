@@ -1,9 +1,60 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Section from '../components/common/Section';
 import Button from '../components/common/Button';
-import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, CheckCircle } from 'lucide-react';
 
+const API_BASE_URL = 'https://car-rental-backend-production-a37b.up.railway.app';
 const Contact = () => {
+    const [formData, setFormData] = useState({
+        name: '',
+        phone: '',
+        email: '',
+        date: '',
+        vehicle: 'Standard Car',
+        message: ''
+    });
+    const [submitting, setSubmitting] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [error, setError] = useState(null);
+
+    const handleChange = (e) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/contact`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    subject: `${formData.vehicle} - Pickup: ${formData.date}`,
+                    message: formData.message,
+                }),
+            });
+
+            const json = await res.json();
+
+            if (json.success) {
+                setIsSubmitted(true);
+                window.scrollTo(0, 0);
+            } else {
+                setError(json.message || 'Failed to send message. Please try again.');
+            }
+        } catch {
+            setError('Server error. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <>
             <div className="bg-primary-dark text-white pt-32 pb-16">
@@ -67,7 +118,7 @@ const Contact = () => {
                             </div>
                         </div>
 
-                        {/* Map Placeholder */}
+                        {/* Map */}
                         <div className="h-64 bg-gray-200 rounded-2xl overflow-hidden shadow-card">
                             <iframe
                                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2245.568390772091!2d37.6173!3d55.7558!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTXCsDQ1JzIwLjkiTiAzN8KwMzcnMDIuMyJF!5e0!3m2!1sen!2sru!4v1625680000000!5m2!1sen!2sru"
@@ -84,49 +135,79 @@ const Contact = () => {
                     {/* Contact Form */}
                     <div className="bg-white p-8 rounded-2xl shadow-card border border-gray-100">
                         <h3 className="text-2xl font-bold text-gray-900 font-heading mb-6">Send Us a Message</h3>
-                        <form className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                    <input type="text" id="name" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="John Doe" />
-                                </div>
-                                <div>
-                                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                    <input type="tel" id="phone" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="+7 (999) 000-00-00" />
-                                </div>
-                            </div>
 
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                                <input type="email" id="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="john@example.com" />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
-                                    <input type="date" id="date" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" />
+                        {/* Success Message */}
+                        {isSubmitted ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                                    <CheckCircle size={32} />
                                 </div>
-                                <div>
-                                    <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
-                                    <select id="vehicle" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors">
-                                        <option>Standard Car</option>
-                                        <option>SUV</option>
-                                        <option>Van</option>
-                                        <option>Mini Bus</option>
-                                        <option>Bus</option>
-                                    </select>
+                                <h4 className="text-xl font-bold text-gray-900 mb-2">Message Sent!</h4>
+                                <p className="text-gray-600 mb-6">
+                                    Thank you, {formData.name}. We'll get back to you shortly.
+                                </p>
+                                <button
+                                    onClick={() => { setIsSubmitted(false); setFormData({ name: '', phone: '', email: '', date: '', vehicle: 'Standard Car', message: '' }); }}
+                                    className="text-primary-DEFAULT font-medium hover:underline"
+                                >
+                                    Send another message
+                                </button>
+                            </div>
+                        ) : (
+                            <form className="space-y-6" onSubmit={handleSubmit}>
+                                {error && (
+                                    <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                        <input type="text" id="name" required value={formData.name} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="John Doe" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                        <input type="tel" id="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="+7 (999) 000-00-00" />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message / Special Requests</label>
-                                <textarea id="message" rows="4" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="Tell us more about your trip..."></textarea>
-                            </div>
+                                <div>
+                                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                    <input type="email" id="email" required value={formData.email} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="john@example.com" />
+                                </div>
 
-                            <Button type="submit" variant="primary" className="w-full py-4 text-lg shadow-lg">
-                                Send Request
-                            </Button>
-                        </form>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
+                                        <input type="date" id="date" value={formData.date} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+                                        <select id="vehicle" value={formData.vehicle} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors">
+                                            <option>Standard Car</option>
+                                            <option>SUV</option>
+                                            <option>Van</option>
+                                            <option>Mini Bus</option>
+                                            <option>Bus</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message / Special Requests</label>
+                                    <textarea id="message" rows="4" required value={formData.message} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors" placeholder="Tell us more about your trip..."></textarea>
+                                </div>
+
+                                <button
+    type="submit"
+    disabled={submitting}
+    className="w-full py-4 text-lg inline-flex items-center justify-center px-6 rounded-full font-medium transition-all duration-300 bg-primary-DEFAULT hover:bg-primary-dark text-white"
+>
+    {submitting ? 'Sending...' : 'Send Request'}
+</button>
+                            </form>
+                        )}
                     </div>
                 </div>
             </Section>

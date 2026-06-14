@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 const Button = ({
     children,
@@ -23,7 +23,7 @@ const Button = ({
     const Component = to ? Link : href ? 'a' : 'button';
 
     return (
-        <motion.div
+        <Motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="inline-block"
@@ -37,7 +37,7 @@ const Button = ({
             >
                 {children}
             </Component>
-        </motion.div>
+        </Motion.div>
     );
 };
 

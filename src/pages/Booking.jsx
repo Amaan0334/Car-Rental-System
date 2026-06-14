@@ -1,34 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+//import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, Calendar, MapPin, User, Mail, Phone as PhoneIcon } from 'lucide-react';
 import Section from '../components/common/Section';
 import Button from '../components/common/Button';
-import { fleet } from '../data/fleet';
+
+const API_BASE_URL = 'https://car-rental-backend-production-a37b.up.railway.app';
 
 const Booking = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [vehicle, setVehicle] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
-        date: '',
+        pickup_date: '',
+        return_date: '',
         pickup: '',
         dropoff: '',
         notes: ''
     });
     const [isSubmitted, setIsSubmitted] = useState(false);
 
+    // Fetch vehicle from backend
     useEffect(() => {
-        const foundVehicle = fleet.find(v => v.id === parseInt(id));
-        if (foundVehicle) {
-            setVehicle(foundVehicle);
-        } else {
-            // Handle case where vehicle is not found, maybe redirect to fleet
-            navigate('/fleet');
-        }
+        const fetchVehicle = async () => {
+            try {
+                setLoading(true);
+                const res = await fetch(`${API_BASE_URL}/api/cars/${id}`);
+                const json = await res.json();
+                if (json.success) {
+                    setVehicle(json.data);
+                } else {
+                    navigate('/fleet');
+                }
+            } catch {
+                navigate('/fleet');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchVehicle();
     }, [id, navigate]);
 
     const handleChange = (e) => {
@@ -36,16 +52,49 @@ const Booking = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitted(true);
-            window.scrollTo(0, 0);
-        }, 1000);
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    car_id: vehicle.id,
+                    customer_name: formData.name,
+                    customer_email: formData.email,
+                    customer_phone: formData.phone,
+                    pickup_date: formData.pickup_date,
+                    return_date: formData.return_date,
+                    pickup_location: `${formData.pickup} → ${formData.dropoff}`,
+                    notes: formData.notes,
+                }),
+            });
+
+            const json = await res.json();
+
+            if (json.success) {
+                setIsSubmitted(true);
+                window.scrollTo(0, 0);
+            } else {
+                setError(json.message || 'Booking failed. Please try again.');
+            }
+        } catch  {
+            setError('Server error. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (!vehicle) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            Loading...
+        </div>
+    );
+
+    if (!vehicle) return null;
 
     if (isSubmitted) {
         return (
@@ -60,7 +109,8 @@ const Booking = () => {
                     </motion.div>
                     <h2 className="text-3xl font-bold font-heading mb-4">Booking Request Received!</h2>
                     <p className="text-gray-600 mb-8">
-                        Thank you, {formData.name}. We have received your request for the <span className="font-semibold text-primary-DEFAULT">{vehicle.name}</span>.
+                        Thank you, {formData.name}. We have received your request for the{' '}
+                        <span className="font-semibold text-primary-DEFAULT">{vehicle.name}</span>.
                         Our team will contact you shortly at {formData.phone} to confirm the details.
                     </p>
                     <Button to="/fleet" variant="primary">
@@ -92,7 +142,7 @@ const Booking = () => {
                         <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden sticky top-24">
                             <div className="h-48 overflow-hidden">
                                 <img
-                                    src={vehicle.image}
+                                    src={vehicle.image_url}
                                     alt={vehicle.name}
                                     className="w-full h-full object-cover"
                                 />
@@ -104,30 +154,29 @@ const Booking = () => {
                                         {vehicle.category}
                                     </span>
                                     <span className="text-lg font-bold text-primary-DEFAULT">
-                                        {vehicle.price ? (
-                                            <>{vehicle.price.toLocaleString('ru-RU')} ₽ <span className="text-sm font-normal text-gray-500">/ day</span></>
+                                        {vehicle.price_per_day ? (
+                                            <>${parseFloat(vehicle.price_per_day).toLocaleString()} <span className="text-sm font-normal text-gray-500">/ day</span></>
                                         ) : (
                                             <span>Contact us for price</span>
                                         )}
                                     </span>
                                 </div>
-
                                 <div className="space-y-3 pt-4 border-t border-gray-100 text-sm text-gray-600">
                                     <div className="flex justify-between">
                                         <span>Passengers:</span>
-                                        <span className="font-medium text-gray-900">{vehicle.passengers}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Luggage:</span>
-                                        <span className="font-medium text-gray-900">{vehicle.luggage} bags</span>
+                                        <span className="font-medium text-gray-900">{vehicle.seats}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Transmission:</span>
                                         <span className="font-medium text-gray-900">{vehicle.transmission}</span>
                                     </div>
                                     <div className="flex justify-between">
+                                        <span>Fuel:</span>
+                                        <span className="font-medium text-gray-900">{vehicle.fuel_type}</span>
+                                    </div>
+                                    <div className="flex justify-between">
                                         <span>Service:</span>
-                                        <span className="font-medium text-gray-900">{vehicle.withDriver ? 'With Driver' : 'Self Drive'}</span>
+                                        <span className="font-medium text-gray-900">With Driver</span>
                                     </div>
                                 </div>
                             </div>
@@ -138,6 +187,12 @@ const Booking = () => {
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-2xl shadow-card border border-gray-100">
                             <h3 className="text-2xl font-bold text-gray-900 font-heading mb-6">Personal Details</h3>
+
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
@@ -166,7 +221,7 @@ const Booking = () => {
                                             value={formData.phone}
                                             onChange={handleChange}
                                             className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors"
-                                            placeholder="+7 (999) 000-00-00"
+                                            placeholder="+92-300-1234567"
                                         />
                                     </div>
                                 </div>
@@ -191,21 +246,32 @@ const Booking = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Date & Time</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Date</label>
                                     <div className="relative">
                                         <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                                         <input
-                                            type="datetime-local"
-                                            name="date"
+                                            type="date"
+                                            name="pickup_date"
                                             required
-                                            value={formData.date}
+                                            value={formData.pickup_date}
                                             onChange={handleChange}
                                             className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    {/* Spacer or Duration field if needed */}
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Return Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                        <input
+                                            type="date"
+                                            name="return_date"
+                                            required
+                                            value={formData.return_date}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none transition-colors"
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
@@ -251,8 +317,13 @@ const Booking = () => {
                                 ></textarea>
                             </div>
 
-                            <Button type="submit" variant="primary" className="w-full py-4 text-lg shadow-lg">
-                                Confirm Booking Request
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                className="w-full py-4 text-lg shadow-lg"
+                                disabled={submitting}
+                            >
+                                {submitting ? 'Submitting...' : 'Confirm Booking Request'}
                             </Button>
                             <p className="text-center text-sm text-gray-500 mt-4">
                                 No payment required now. You will pay upon confirmation.
