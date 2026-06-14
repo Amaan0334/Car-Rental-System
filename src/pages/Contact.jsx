@@ -23,9 +23,10 @@ const Contact = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        setError(null);
+    if (e) e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    // ... rest stays the same
 
         try {
             const res = await fetch(`${API_BASE_URL}/api/contact`, {
@@ -200,7 +201,8 @@ const Contact = () => {
                                 </div>
 
                                 <button
-    type="submit"
+    type="button"
+    onClick={handleSubmit}
     disabled={submitting}
     className="w-full py-4 text-lg inline-flex items-center justify-center px-6 rounded-full font-medium transition-all duration-300 bg-primary-DEFAULT hover:bg-primary-dark text-white"
 >
